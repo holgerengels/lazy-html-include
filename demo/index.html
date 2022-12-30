@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      background: #fafafa;
+    }
+  </style>
+</head>
+<body>
+  <div id="demo"></div>
+
+  <script type="module">
+    import { html, render } from 'lit-html';
+    import '../dist/src/lazy-html-include.js';
+
+    render(
+      html`
+        <lazy-html-include src="./graphical-integration.html" scope-scripts></lazy-html-include>
+      `,
+      document.querySelector('#demo')
+    );
+  </script>
+</body>
+</html>

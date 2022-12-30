@@ -1,23 +1,91 @@
 {
-  "name": "html-include-element",
-  "version": "0.3.0",
+  "name": "lazy-html-include",
+  "version": "0.1.0",
   "description": "Include HTML files into your page",
-  "type": "module",
-  "main": "html-include-element.js",
-  "scripts": {
-    "test": "wtr test/**/*_test.js --node-resolve"
-  },
-  "author": "Justin Fagnani <justin@fagnani.com>",
   "license": "Apache-2.0",
+  "author": "Holger Engels",
   "repository": {
     "type": "git",
-    "url": "https://github.com/justinfagnani/html-include-element.git"
+    "url": "https://github.com/holgerengels/lazy-html-include.git"
   },
-  "files": [
-    "html-include-element.js"
+  "homepage": "https://kmap.eu",
+  "keywords": [
+    "kmap",
+    "include",
+    "intersection-observer"
   ],
+  "type": "module",
+  "main": "dist/src/index.js",
+  "module": "dist/src/index.js",
+  "exports": {
+    ".": "./dist/src/index.js",
+    "lazy-html-include.js": "./dist/src/lazy-html-include.js"
+  },
+  "scripts": {
+    "start": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wds\"",
+    "build": "tsc",
+    "prepublish": "tsc",
+    "lint": "eslint --ext .ts,.html . --ignore-path .gitignore && prettier \"**/*.ts\" --check --ignore-path .gitignore",
+    "format": "eslint --ext .ts,.html . --fix --ignore-path .gitignore && prettier \"**/*.ts\" --write --ignore-path .gitignore",
+    "test": "tsc && wtr --coverage",
+    "test:watch": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wtr --watch\"",
+    "storybook": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wds -c .storybook/server.mjs\"",
+    "storybook:build": "tsc && build-storybook"
+  },
   "devDependencies": {
-    "@esm-bundle/chai": "^4.3.4-fix.0",
-    "@web/test-runner": "^0.13.27"
+    "@open-wc/eslint-config": "^4.3.0",
+    "@open-wc/testing": "^2.5.33",
+    "@typescript-eslint/eslint-plugin": "^4.28.3",
+    "@typescript-eslint/parser": "^4.28.3",
+    "@web/dev-server": "^0.1.29",
+    "@web/dev-server-storybook": "^0.3.5",
+    "@web/test-runner": "^0.15.0",
+    "concurrently": "^5.3.0",
+    "eslint": "^7.30.0",
+    "eslint-config-prettier": "^7.2.0",
+    "husky": "^4.3.8",
+    "lint-staged": "^10.5.4",
+    "prettier": "^2.3.2",
+    "tslib": "^2.4.1",
+    "typescript": "~4.8.4"
+  },
+  "eslintConfig": {
+    "parser": "@typescript-eslint/parser",
+    "extends": [
+      "@open-wc",
+      "prettier"
+    ],
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "rules": {
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error"
+      ],
+      "import/no-unresolved": "off",
+      "import/extensions": [
+        "error",
+        "always",
+        {
+          "ignorePackages": true
+        }
+      ]
+    }
+  },
+  "prettier": {
+    "singleQuote": true,
+    "arrowParens": "avoid"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   }
 }

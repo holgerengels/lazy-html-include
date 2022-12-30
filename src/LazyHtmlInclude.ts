@@ -2,14 +2,15 @@ const LINK_LOAD_SUPPORTED = 'onload' in HTMLLinkElement.prototype;
 
 /**
  * Firefox may throw an error when accessing a not-yet-loaded cssRules property.
- * @param {HTMLLinkElement}
  * @return {boolean}
+ * @param link
  */
-function isLinkAlreadyLoaded(link) {
+function isLinkAlreadyLoaded(link: HTMLLinkElement) {
   try {
     return !!(link.sheet && link.sheet.cssRules);
-  } catch (error) {
-    if (error.name === 'InvalidAccessError' || error.name === 'SecurityError')
+  }
+  catch (error) {
+    if (error instanceof Error && (error.name === 'InvalidAccessError' || error.name === 'SecurityError'))
       return false;
     else
       throw error;
@@ -24,9 +25,9 @@ function isLinkAlreadyLoaded(link) {
  * @param  {HTMLLinkElement} link
  * @return {Promise<StyleSheet>}
  */
-async function linkLoaded(link) {
+async function linkLoaded(link: HTMLLinkElement) {
   return new Promise((resolve, reject) => {
-    if (!LINK_LOAD_SUPPORTED) resolve();
+    if (!LINK_LOAD_SUPPORTED) resolve(undefined);
     else if (isLinkAlreadyLoaded(link)) resolve(link.sheet);
     else {
       link.addEventListener('load', () => resolve(link.sheet), { once: true });
@@ -48,7 +49,9 @@ async function linkLoaded(link) {
  * attribute is present, the HTML will be embedded into the child content.
  *
  */
-export class HTMLIncludeElement extends HTMLElement {
+export class LazyHtmlInclude extends HTMLElement {
+  declare shadowRoot: ShadowRoot;
+
   static get observedAttributes() {
     return ['src', 'mode', 'no-shadow'];
   }
@@ -59,10 +62,10 @@ export class HTMLIncludeElement extends HTMLElement {
    * Setting this property causes a fetch the HTML from the URL.
    */
   get src() {
-    return this.getAttribute('src');
+    return this.getAttribute('src') as string;
   }
 
-  set src(value) {
+  set src(value: string) {
     this.setAttribute('src', value);
   }
 
@@ -73,10 +76,10 @@ export class HTMLIncludeElement extends HTMLElement {
    * Setting this property does not re-fetch the HTML.
    */
   get mode() {
-    return this.getAttribute('mode');
+    return this.getAttribute('mode') as RequestMode;
   }
 
-  set mode(value) {
+  set mode(value: RequestMode) {
     this.setAttribute('mode', value);
   }
 
@@ -88,11 +91,23 @@ export class HTMLIncludeElement extends HTMLElement {
     return this.hasAttribute('no-shadow');
   }
 
-  set noShadow(value) {
-    if (!!value) {
+  set noShadow(value: boolean) {
+    if (value) {
       this.setAttribute('no-shadow', '');
     } else {
       this.removeAttribute('no-shadow');
+    }
+  }
+
+  get scopeScripts() {
+    return this.hasAttribute('scope-scripts');
+  }
+
+  set scopeScripts(value: boolean) {
+    if (value) {
+      this.setAttribute('scope-scripts', '');
+    } else {
+      this.removeAttribute('scope-scripts');
     }
   }
 
@@ -108,7 +123,7 @@ export class HTMLIncludeElement extends HTMLElement {
     `;
   }
 
-  async attributeChangedCallback(name, oldValue, newValue) {
+  async attributeChangedCallback(name: string, oldValue: any, newValue: any) {
     if (name === 'src') {
       let text = '';
       try {
@@ -122,7 +137,8 @@ export class HTMLIncludeElement extends HTMLElement {
           // the src attribute was changed before we got the response, so bail
           return;
         }
-      } catch(e) {
+      }
+      catch(e) {
         console.error(e);
       }
       // Don't destroy the light DOM if we're using shadow DOM, so that slotted content is respected
@@ -139,11 +155,35 @@ export class HTMLIncludeElement extends HTMLElement {
       // If we're not using shadow DOM, then the consuming root
       // is responsible to load its own resources
       if (!this.noShadow) {
-        await Promise.all([...this.shadowRoot.querySelectorAll('link')].map(linkLoaded));
+        await Promise.all([...Array.from(this.shadowRoot.querySelectorAll('link'))].map(linkLoaded));
+
+        var scripts = [...Array.from(this.shadowRoot.querySelectorAll("script"))];
+        console.log(scripts);
+
+        for (var script of scripts) {
+          if (script.src) {
+            const mode = this.mode || 'cors';
+            const response = await fetch(script.src, {mode});
+            if (!response.ok) {
+              throw new Error(`html-include fetch failed: ${response.statusText}`);
+            }
+            const text = await response.text();
+            new Function(text).call(this.scopeScripts ? this : window);
+          }
+          else {
+            /*
+            const newScript = document.createElement("script");
+            Array.from(script.attributes).forEach( attr => { newScript.setAttribute(attr.name, attr.value) });
+            const scriptText = document.createTextNode(script.innerHTML);
+            newScript.appendChild(scriptText);
+            script.parentNode!.replaceChild(newScript, script);
+            */
+            new Function(script.innerText).call(this.scopeScripts ? this : window);
+          }
+        }
       }
 
       this.dispatchEvent(new Event('load'));
     }
   }
 }
-customElements.define('html-include', HTMLIncludeElement);

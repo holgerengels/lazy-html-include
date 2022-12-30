@@ -1,6 +1,6 @@
 import {assert} from '@esm-bundle/chai';
 
-import '../html-include-element.js';
+import '../src/lazy-html-include.js';
 
 suite('html-include-element', () => {
 
